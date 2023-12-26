@@ -7,8 +7,17 @@
 #include <cctype>
 #include <algorithm>
 #include <stdlib.h>
+#include <map>
 
 using namespace std;
+
+int Pawn_Eval[64]={0,   0,   0,   0,   0,   0,   0,   0, 78,  83,  86,  73, 102,  82,  85,  90, 7,  29,  21,  44,  40,  31,  44,   7, -17,  16,  -2,  15,  14,   0,  15, -13, -26,   3,  10,   6,   9,   1,   0, -23, -22,   9,   5, -11, -10,  -2,   3, -19,-31,   8,  -7, -37, -36, -14,   3, -31,0,   0,0,0,  0,   0,   0,   0};
+int Knight_Eval[64]={-66, -53, -75, -75, -10, -55, -58, -70, -3,  -6, 100, -36,   4,  62,  -4, -14, 10,  67,   1,  74,  73,  27,  62,  -2, 24,  24,  45,  37,  33,  41,  25,  17, -1,   5,  31,  21,  22,  35,   2,   0, -18,  10,  13,  22,  18,  15,  11, -14, -23, -15,   2,   0,   2,   0, -23, -20, -74, -23, -26, -24, -19, -35, -22, -69};
+int Bishop_Eval[64]={-59, -78, -82, -76, -23,-107, -37, -50, -11,  20,  35, -42, -39,  31,   2, -22, -9,  39, -32,  41,  52, -10,  28, -14, 25,  17,  20,  34,  26,  25,  15,  10, 13,  10,  17,  23,  17,  16,   0,   7, 14,  25,  24,  15,   8,  25,  20,  15, 19,  20,  11,   6,   7,   6,  20,  16, -7,   2, -15, -12, -14, -15, -10, -10};
+int Rook_Eval[64]={35,  29,  33,   4,  37,  33,  56,  50, 55,  29,  56,  67,  55,  62,  34,  60, 19,  35,  28,  33,  45,  27,  25,  15, 0,   5,  16,  13,  18,  -4,  -9,  -6, -28, -35, -16, -21, -13, -29, -46, -30, -42, -28, -42, -25, -25, -35, -26, -46, -53, -38, -31, -26, -29, -43, -44, -53, -30, -24, -18,   5,  -2, -18, -31, -32};
+int Queen_Eval[64]={6,   1,  -8,-104,  69,  24,  88,  26, 14,  32,  60, -10,  20,  76,  57,  24, -2,  43,  32,  60,  72,  63,  43,   2, 1, -16,  22,  17,  25,  20, -13,  -22, -14, -15,  -2,  -5,  -1, -10, -20, -22, -30,  -6, -13, -11, -16, -11, -16, -27, -36, -18,   0, -19, -15, -15, -21, -38, -39, -30, -31, -13, -31, -36, -34, -42};
+int King_Eval[64]={4,  54,  47, -99, -99,  60,  83, -62, -32,  10,  55,  56,  56,  55,  10,   3, -62,  12, -57,  44, -67,  28,  37, -31, -55,  50,  11,  -4, -19,  13,   0, -49, -55, -43, -52, -28, -51, -47,  -8, -50, -47, -42, -43, -79, -64, -32, -29, -32, -4,   3, -14, -50, -57, -18,  13,   4, 17,  30,  -3, -14,   6,  -1,  40,  18};
+
 
 
 long WHITE_CASTLE_KINGSIDE=(0x6000000000000000);
@@ -643,6 +652,7 @@ vector<long> make_move(vector<long> bitboards, string move){
     }
     output.push_back(BB);
   }
+  output[9]=0;
   
   if(abs(end-start)==16&&((bitboards[0]&(1ULL << start))!=0)){
     output[9] = 1ULL << end;
@@ -712,6 +722,88 @@ int PERFT(int depth, vector<long>bitboards, bool color){
   return node;
 }
 
+map<vector<long>, int>Transposition_Table={};
+
+map<vector<long>, string> Opening_Book={};
+
+int evaluate(vector<long> bitboards, bool color){
+  if(Transposition_Table.find(bitboards)!=Transposition_Table.end()){
+    return Transposition_Table[bitboards];
+  }
+  int eval=0;
+    bitset<64> wpawn(bitboards[0]&bitboards[6]);
+    bitset<64> wknight(bitboards[1]&bitboards[6]);
+    bitset<64> wbishop(bitboards[2]&bitboards[6]);
+    bitset<64> wrook(bitboards[3]&bitboards[6]);
+    bitset<64> wqueen(bitboards[4]&bitboards[6]);
+    bitset<64> wking(bitboards[5]&bitboards[6]);
+
+    bitset<64> bpawn(bitboards[0]&bitboards[7]);
+    bitset<64> bknight(bitboards[1]&bitboards[7]);
+    bitset<64> bbishop(bitboards[2]&bitboards[7]);
+    bitset<64> brook(bitboards[3]&bitboards[7]);
+    bitset<64> bqueen(bitboards[4]&bitboards[7]);
+    bitset<64> bking(bitboards[5]&bitboards[7]);
+    for(int x =0; x<64; x++){
+      eval += wpawn[x]*1000;
+      eval += wpawn[x]*Pawn_Eval[x];
+
+      eval += wknight[x]*3000;
+      eval += wknight[x]*Knight_Eval[x];
+
+      eval += wbishop[x]*3200;
+      eval += wbishop[x]*Bishop_Eval[x];
+
+      eval += wrook[x]*5000;
+      eval += wrook[x]*Rook_Eval[x];
+
+      eval += wqueen[x]*9000;
+      eval += wqueen[x]*Queen_Eval[x];
+
+      eval += wking[x]*205000;
+      eval += wking[x]*King_Eval[x];
+
+      
+      eval -= bpawn[x]*1000;
+      eval -= bpawn[x]*Pawn_Eval[63-x];
+
+      eval -= bknight[x]*3000;
+      eval -= bknight[x]*Knight_Eval[63-x];
+
+      eval -= bbishop[x]*3200;
+      eval -= bbishop[x]*Bishop_Eval[63-x];
+
+      eval -= brook[x]*5000;
+      eval -= brook[x]*Rook_Eval[63-x];
+
+      eval -= bqueen[x]*9000;
+      eval -= bqueen[x]*Queen_Eval[63-x];
+
+      eval -= bking[x]*205000;
+      eval -= bking[x]*King_Eval[63-x];
+      
+    }
+  Transposition_Table[bitboards]=eval;
+  return eval;
+}
+
+int negamax(vector<long> node, int depth, int α, int β, int color){
+  if(depth==0){
+      return evaluate(node, color==1)*color;
+      }
+
+  vector<string> childNodes = legal_moves(node, color==1);
+  int value = -3000000;
+  for(string child:childNodes){
+    value = max(value, -negamax(make_move(node,child), depth - 1, -β, -α, -color));
+    α = max(α, value);
+    if (α >= β){
+        break;
+    }
+  }
+  return value;
+}
+
 int main() {
   string fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
   vector<string> pieces={"pawn","knight","bishop","rook","queen","king","white","black","castle_mask","ep_mask"};
@@ -722,10 +814,54 @@ int main() {
   if(fen.find('w')){
     color = true;
   }
-  vector<string> moves=legal_moves(bitboards, color);
+  while(move!="0000"){
+    vector<string>moves=legal_moves(bitboards, true);
+    vector<int> evaluate={};
+    string bestmove="";
+    bestmove=Opening_Book[bitboards];
+    if(moves.size()==0){
+      printboard(bitboards);
+      cout << '\n' << "I Have No Moves";
+      exit(0);
+    }
+  
+    if(bestmove==""){
+      for(string move: moves){
+        evaluate.push_back(negamax(make_move(bitboards, move), 4, -300000, 300000, -1));
+      }
+      int max=-100000000;
+      for(int x=0; x<moves.size(); x++){
+        if(evaluate[x]>max){
+          max=evaluate[x];
+          bestmove=moves[x];
+        }
+      }
+      cout << bestmove << '\n';
 
-  for(int depth=0; depth<5; depth++){
-    cout << depth << " : " << PERFT(depth, bitboards, color) << '\n';
+      
+    }
+    bitboards=make_move(bitboards, bestmove);
+  
+    move="";
+
+    moves = legal_moves(bitboards, false);
+    while (find(moves.begin(), moves.end(), move) == moves.end()) {
+      printboard(bitboards);
+      cout << "[ ";
+      for(string m : moves){
+        cout << m << " ";
+      }
+      cout << "]" << '\n';
+      cout << "Choose a move" << endl;
+      cin >> move;
+      if(move=="0000"){
+        break;
+      }
+    }
+    if(move=="0000"){
+      break;
+    }
+    bitboards=make_move(bitboards, move);
   }
 }
 //Use Board
